@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import {isEmpty} from "lodash";
-import {AIFW_EVENTS_SYSTEM_PROMPT, aiFwClient, askAiFw, askOpenAi, MODEL_NAME} from "../../utils/llmUtils";
+import {AIFW_EVENTS_SYSTEM_PROMPT, aiFwClient, askAiFw, askOpenAi, loadSystemPrompt, MODEL_NAME} from "../../utils/llmUtils";
 
 // in case the baseUrl is not provided the regular openAi url will be used (in the .env files)
 // const openAiClient = new OpenAI({
@@ -13,16 +13,13 @@ const ERROR_MESSAGE = 'Could not get a response from the AI';
 
 export const POST = async (req: Request) => {
     const propmpt = await req.text();
-    const isProtectedByAiFw = req?.headers?.get("X-is-protected") ?? false;
-    console.log(`loading openAi through: (base:${aiFwClient.baseURL}`);
 
     if (isEmpty(propmpt)) {
         return new Response('request must contain json object in the body of this type {question: "xxxxxx"}', {status: 400});
     }
 
-    try {
-        const asyncResponse = isProtectedByAiFw ? askAiFw(propmpt) : askOpenAi(propmpt);
-        const aiResponse = await asyncResponse;
+    try {        
+        const aiResponse = await loadSystemPrompt(propmpt);
         console.log('aiResponse', aiResponse);
         const responseText = aiResponse.choices.length > 0 ? aiResponse.choices[0]?.message?.content ?? ERROR_MESSAGE : ERROR_MESSAGE ;
         return new Response(responseText, {status: responseText ? 200 : 500});
