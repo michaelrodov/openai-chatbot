@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "node-terminal",
+        "name": "server-side",
+        "request": "launch",
+        "command": "npm run dev"
+      },
+      {
+        "type": "chrome",
+        "name": "client-side",
+        "request": "launch",
+        "url": "http://localhost:3000",
+        "webRoot": "${workspaceFolder}"
+      }
+    ]
+  }
+  

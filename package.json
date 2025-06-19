@@ -5,7 +5,8 @@
   "scripts": {
     "aifwsecondary": "PORT=3302 env-cmd -f .env.aifwsecondary next dev --turbopack",
     "aifwmain": "PORT=3301 env-cmd -f .env.aifwmain next dev --turbopack",
-    "aifw_prod": "PORT=3301 env-cmd -f .env.aifw_prod_826383 next dev --turbopack",
+    "aifw_prod_826383": "PORT=3304 env-cmd -f .env.aifw_prod_826383 next dev --turbopack",
+    "aifw_prod": "PORT=3303 env-cmd -f .env.aifw_prod_5859 next dev --turbopack",
     "dev": "PORT=3300 next dev --turbopack",
     "build": "next build",
     "start": "next start",
