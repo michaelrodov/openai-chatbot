@@ -371,7 +371,7 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3301/api/question', {
+      const response = await fetch('http://localhost:3300/api/question', {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',
