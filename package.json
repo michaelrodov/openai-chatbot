@@ -18,7 +18,10 @@
     "openai": "^4.103.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "single-spa": "^6.0.3"
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "single-spa": "^6.0.3",
+    "styled-components": "^6.1.19"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
