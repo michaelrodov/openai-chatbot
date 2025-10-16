@@ -1,6 +1,6 @@
-import OpenAI from "openai";
 import {isEmpty} from "lodash";
-import {AIFW_EVENTS_SYSTEM_PROMPT, aiFwClient, askAiFw, askOpenAi, MODEL_NAME, openAiClient} from "../../utils/llmUtils";
+import { askOpenAi } from "@/app/utils/llmUtils";
+
 
 // in case the baseUrl is not provided the regular openAi url will be used (in the .env files)
 // const openAiClient = new OpenAI({
@@ -19,12 +19,12 @@ export const POST = async (req: Request) => {
     }
 
 
-    const isProtectedByAiFw = req?.headers?.get("X-is-protected") ?? false;
-    console.log(`loading openAi through: (base:${isProtectedByAiFw ? aiFwClient.baseURL : openAiClient.baseURL})`);
+    const isProtectedByAiFw = !!(req?.headers?.get("X-is-firewalled"));
+    
 
 
     try {
-        const asyncResponse = isProtectedByAiFw ? askAiFw(propmpt) : askOpenAi(propmpt);
+        const asyncResponse = askOpenAi(propmpt, undefined, isProtectedByAiFw);
         const aiResponse = await asyncResponse;
         console.log('aiResponse: ', JSON.stringify(aiResponse, null, 2));
         const responseText = aiResponse.choices.length > 0 ? aiResponse.choices[0]?.message?.content ?? ERROR_MESSAGE : ERROR_MESSAGE ;
@@ -33,7 +33,7 @@ export const POST = async (req: Request) => {
                 'Content-Type': 'text/plain',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key, X-is-protected'
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key, X-is-firewalled'
             },
             status: responseText ? 200 : 500
         });

@@ -3,7 +3,7 @@
     "configurations": [
       {
         "type": "node-terminal",
-        "name": "server-side",
+        "name": "server-side dev",
         "request": "launch",
         "command": "npm run dev"
       },

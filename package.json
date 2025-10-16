@@ -3,10 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "aifwsecondary": "PORT=3300 env-cmd -f .env.aifwsecondary next dev --turbopack",
-    "aifwmain": "PORT=3300 env-cmd -f .env.aifwmain next dev --turbopack",
-    "aifw_prod_826383": "PORT=3300 env-cmd -f .env.aifw_prod_826383 next dev --turbopack",
-    "aifw_prod": "PORT=3300 env-cmd -f .env.aifw_prod_5859 next dev --turbopack",
+    "openai": "PORT=3300 env-cmd -f .env.openai next dev --turbopack",
+    "azure:openai": "PORT=3301 env-cmd -f .env.azure.openai next dev --turbopack",
     "dev": "PORT=3300 next dev --turbopack",
     "build": "next build",
     "start": "next start",

@@ -88,6 +88,72 @@ const HeaderStatus = styled.p`
   margin: 0;
 `;
 
+const HeaderRight = styled.div`
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const ToggleLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  user-select: none;
+`;
+
+const ToggleSwitch = styled.div<{ $checked: boolean }>`
+  position: relative;
+  width: 40px;
+  height: 20px;
+  background-color: ${props => props.$checked ? '#10b981' : 'rgba(255, 255, 255, 0.3)'};
+  border-radius: 10px;
+  transition: background-color 0.2s;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: ${props => props.$checked ? '22px' : '2px'};
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+  }
+`;
+
+const ToggleInput = styled.input`
+  display: none;
+`;
+
+const Select = styled.select`
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+
+  option {
+    background-color: #059669;
+    color: white;
+  }
+`;
+
+const SelectLabel = styled.span`
+  font-size: 12px;
+  margin-right: 4px;
+`;
+
 const MessagesContainer = styled.div`
   flex: 1;
   overflow-y: auto;
@@ -345,6 +411,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isFirewalled, setIsFirewalled] = useState(false);
+  const [llmProvider, setLlmProvider] = useState<'openai' | 'azure-openai'>('openai');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -370,12 +438,20 @@ export default function ChatPage() {
     setInputText('');
     setIsLoading(true);
 
+    // TODO navigate to /api/azure_openai
     try {
-      const response = await fetch('http://localhost:3300/api/question', {
+      const headers: Record<string, string> = {
+        'Content-Type': 'text/plain',
+        'X-llm-provider': llmProvider,
+      };
+
+      if (isFirewalled) {
+        headers['X-is-firewalled'] = 'true';
+      }
+      // TODO do something more robust here
+      const response = await fetch(llmProvider === 'azure-openai' ? '/api/azure_openai' : '/api/question', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain',
-        },
+        headers,
         body: messageText,
       });
 
@@ -414,7 +490,7 @@ export default function ChatPage() {
     sendMessage();
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -437,6 +513,27 @@ export default function ChatPage() {
             <HeaderTitle>Chat Assistant</HeaderTitle>
             <HeaderStatus>Online</HeaderStatus>
           </div>
+          <HeaderRight>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <SelectLabel>Provider:</SelectLabel>
+              <Select
+                value={llmProvider}
+                onChange={(e) => setLlmProvider(e.target.value as 'openai' | 'azure-openai')}
+              >
+                <option value="openai">OpenAI</option>
+                <option value="azure-openai">Azure (OpenAI)</option>
+              </Select>
+            </div>
+            <ToggleLabel>
+              <span>Firewalled</span>
+              <ToggleInput
+                type="checkbox"
+                checked={isFirewalled}
+                onChange={(e) => setIsFirewalled(e.target.checked)}
+              />
+              <ToggleSwitch $checked={isFirewalled} />
+            </ToggleLabel>
+          </HeaderRight>
         </Header>
 
         {/* Messages Container */}
@@ -499,7 +596,7 @@ export default function ChatPage() {
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 placeholder="Type a message here..."
                 disabled={isLoading}
               />

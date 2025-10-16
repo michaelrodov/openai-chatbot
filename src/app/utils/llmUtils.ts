@@ -1,5 +1,6 @@
+import { headers } from "next/headers";
 import OpenAI from "openai";
-import { APIClient } from "openai/core.mjs"
+import { AzureOpenAI } from "openai";
 
 export const MODEL_NAME = "gpt-4.1"; // Define the model name
 export const AIFW_EVENTS_SYSTEM_PROMPT = "You are a security expert and a sales person who specializes in Firewall security product\n" +
@@ -11,33 +12,69 @@ export const AIFW_EVENTS_SYSTEM_PROMPT = "You are a security expert and a sales 
     "- the prompt or response that cause the violation is located in 'messages' object.\n" +
     "When such JSON present, please provide one sentence that would describe why request triggered the guardian that was triggered and also what action was done."
 
-export const aiFwClient = new OpenAI({
-    baseURL: process.env['AIFW_GATEWAY_URL'],
-    defaultHeaders: { "X-Api-Key": process.env['AIFW_API_KEY'] }
+const azureOpenAIClient = new AzureOpenAI({
+    apiKey: process.env['AZUREOPENAI_API_KEY'],
+    endpoint: process.env['AZUREOPENAI_ENDPOINT'],
+    apiVersion: process.env['AZUREOPENAI_VERSION'],
+    deployment: process.env['AZUREOPENAI_DEPLOYMENT']
+});
+
+const azureOpenAIClientAifw = new AzureOpenAI({
+    apiKey: process.env['AZUREOPENAI_API_KEY'],
+    endpoint: process.env['AIFW_GATEWAY_URL'],
+    apiVersion: process.env['AZUREOPENAI_VERSION'],
+    deployment: process.env['AZUREOPENAI_DEPLOYMENT'],
+    defaultHeaders: { 
+        "X-Imperva-Api-Key": process.env['AIFW_API_KEY'],
+        "X-Target-Url": process.env['AZUREOPENAI_ENDPOINT'],
+        "X-User-Id": 'rodov1'
+    }
 });
 
 export const openAiClient = new OpenAI();
+export const openAiClientAifw = new OpenAI({
+    baseURL: process.env['AIFW_GATEWAY_URL'],
+    defaultHeaders: { 
+        "X-Imperva-Api-Key": process.env['AIFW_API_KEY'] 
+    }
+});
 
-export const loadSystemPrompt = async (prompt: string) => {
-    return askOpenAi(prompt, "system");
-}
 
-export const askAiFw = async (question: string) => {
-    return aiFwClient.chat.completions.create({
-        model: MODEL_NAME,
-        messages: [{ role: "user", content: question }]
-    }, {
+const getConfigurations = (configuration: any, isFirewalled: boolean) => {
+    if(!isFirewalled) {
+        return configuration;
+    }
+
+    return {
+        ...configuration,
         headers: {
-            'X-Api-Key': process.env['AIFW_API_KEY']
+            ...configuration.headers
         }
-    });
+    };
 }
 
-export const askOpenAi = async (prompt: string, userRole: any = "user") => {
-    return openAiClient.chat.completions.create(
-        {
-            model: MODEL_NAME,
-            messages: [{ role: userRole, content: prompt }]
-        });
+export const askOpenAi = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
+    const configurations = {
+        model: process.env['OPENAI_MODEL'],
+        messages: [{ role: userRole, content: prompt }]
+    };
+
+    if(isFirewalled) {
+        return openAiClientAifw.chat.completions.create(configurations);
+    }
+    return openAiClient.chat.completions.create(configurations);
+}
+
+export const askAzureOpenAi = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
+    const configurations = getConfigurations({
+        model: process.env['AZUREOPENAI_MODEL'],
+        messages: [{ role: userRole, content: prompt }]
+    }, isFirewalled);
+
+    if(isFirewalled) {
+        return azureOpenAIClientAifw.chat.completions.create(configurations);
+    }
+
+    return azureOpenAIClient.chat.completions.create(configurations);
 }
 
