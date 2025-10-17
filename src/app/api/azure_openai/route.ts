@@ -1,4 +1,5 @@
 import { askAzureOpenAi } from "@/app/utils/llmUtils";
+import { RESPONSE_DEFAULT_HEADERS } from "@/app/utils/networkUtils";
 import { isEmpty } from "lodash";
 
 const ERROR_MESSAGE = 'Could not get a response from the AI';
@@ -26,17 +27,18 @@ export const POST = async (req: Request) => {
             : ERROR_MESSAGE;
 
         return new Response(responseText, {
-            headers: {
-                'Content-Type': 'text/plain',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
-            },
+            headers: RESPONSE_DEFAULT_HEADERS,
             status: responseText ? 200 : 500
         });
     } catch (error) {
         console.error("Error processing Azure OpenAI request:", error);
+        
+        // handle blocking errors from AI Firewall
+        if(error?.status === 400) {
+            return new Response(error.message, { status: 200 });
+        }
+
         // @ts-expect-error - error.message exists on Error type
-        return new Response(`error processing request: ${error.message}`, { status: 500 });
+        return new Response(`error processing request: ${error.message}`, { status: error.status || 500 });
     }
 }

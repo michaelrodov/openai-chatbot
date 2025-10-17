@@ -40,19 +40,6 @@ export const openAiClientAifw = new OpenAI({
 });
 
 
-const getConfigurations = (configuration: any, isFirewalled: boolean) => {
-    if(!isFirewalled) {
-        return configuration;
-    }
-
-    return {
-        ...configuration,
-        headers: {
-            ...configuration.headers
-        }
-    };
-}
-
 export const askOpenAi = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
     const configurations = {
         model: process.env['OPENAI_MODEL'],
@@ -66,10 +53,10 @@ export const askOpenAi = async (prompt: string, userRole: string = "user", isFir
 }
 
 export const askAzureOpenAi = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
-    const configurations = getConfigurations({
+    const configurations = {
         model: process.env['AZUREOPENAI_MODEL'],
         messages: [{ role: userRole, content: prompt }]
-    }, isFirewalled);
+    };
 
     if(isFirewalled) {
         return azureOpenAIClientAifw.chat.completions.create(configurations);

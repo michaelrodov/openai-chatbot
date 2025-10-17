@@ -1,5 +1,6 @@
 import {isEmpty} from "lodash";
 import { askOpenAi } from "@/app/utils/llmUtils";
+import { RESPONSE_DEFAULT_HEADERS } from "@/app/utils/networkUtils";
 
 
 // in case the baseUrl is not provided the regular openAi url will be used (in the .env files)
@@ -29,18 +30,18 @@ export const POST = async (req: Request) => {
         console.log('aiResponse: ', JSON.stringify(aiResponse, null, 2));
         const responseText = aiResponse.choices.length > 0 ? aiResponse.choices[0]?.message?.content ?? ERROR_MESSAGE : ERROR_MESSAGE ;
         return new Response(responseText, {
-            headers: {
-                'Content-Type': 'text/plain',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key, X-is-firewalled'
-            },
+            headers: RESPONSE_DEFAULT_HEADERS,
             status: responseText ? 200 : 500
         });
     } catch (error) {
         console.error("Error processing request:", error);
-        // @ts-ignore
-        return new Response(`error processing request: ${error.message}`, {status: 500});
+        
+        // handle blocking errors from AI Firewall
+        if(error?.status === 400) {
+            return new Response(error.message, { status: 200 });
+        }
+        
+        return new Response(`error processing request: ${error.message}`, {status: error.status || 500});
     }
 }
 
