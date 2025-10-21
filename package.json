@@ -7,7 +7,7 @@
     "azure:openai": "PORT=3301 env-cmd -f .env.azure.openai next dev --turbopack",
     "dev": "PORT=3300 next dev --turbopack",
     "build": "next build",
-    "start": "next start",
+    "start": "PORT=3300 next start",
     "lint": "next lint"
   },
   "dependencies": {

@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import OpenAI from "openai";
 import { AzureOpenAI } from "openai";
 

@@ -412,6 +412,7 @@ export default function ChatPage() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFirewalled, setIsFirewalled] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [llmProvider, setLlmProvider] = useState<'openai' | 'azure-openai'>('openai');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -447,6 +448,10 @@ export default function ChatPage() {
 
       if (isFirewalled) {
         headers['X-is-firewalled'] = 'true';
+      }
+
+      if (isStreaming) {
+        headers['X-Stream'] = 'true';
       }
       // TODO do something more robust here
       const response = await fetch(llmProvider === 'azure-openai' ? '/api/azure_openai' : '/api/question', {
@@ -524,6 +529,15 @@ export default function ChatPage() {
                 <option value="azure-openai">Azure (OpenAI)</option>
               </Select>
             </div>
+            <ToggleLabel>
+              <span>Streaming</span>
+              <ToggleInput
+                type="checkbox"
+                checked={isStreaming}
+                onChange={(e) => setIsStreaming(e.target.checked)}
+              />
+              <ToggleSwitch $checked={isStreaming} />
+            </ToggleLabel>
             <ToggleLabel>
               <span>Firewalled</span>
               <ToggleInput
