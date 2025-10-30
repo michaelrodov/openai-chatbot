@@ -34,7 +34,8 @@ export const openAiClient = new OpenAI();
 export const openAiClientAifw = new OpenAI({
     baseURL: process.env['AIFW_GATEWAY_URL'],
     defaultHeaders: { 
-        "X-Imperva-Api-Key": process.env['AIFW_API_KEY'] 
+        "X-Imperva-Api-Key": process.env['AIFW_API_KEY'] ,
+        "X-Target-Url": 'https://api.openai.com/v1'
     }
 });
 
@@ -51,10 +52,65 @@ export const askOpenAi = async (prompt: string, userRole: string = "user", isFir
     return openAiClient.chat.completions.create(configurations);
 }
 
+export const askOpenAiStream = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
+    const configurations = {
+        model: process.env['OPENAI_MODEL'],
+        messages: [{ role: userRole, content: prompt }] as any,
+        stream: true as const
+    };
+
+    if(isFirewalled) {
+        console.log('🛡️  Using AIFW client with endpoint:', process.env['AIFW_GATEWAY_URL']);
+        const stream = await openAiClientAifw.chat.completions.create(configurations);
+
+        // Create a debugging wrapper around the stream
+        const debugStream = (async function* () {
+            let chunkIndex = 0;
+            try {
+                for await (const chunk of stream) {
+                    chunkIndex++;
+                    // Check for any AIFW-specific fields
+                    const chunkAsAny = chunk as any;
+                    if (chunkAsAny.imperva || chunkAsAny.aifw || chunkAsAny.firewall) {
+                        console.log('⚠️  AIFW-specific fields detected:', {
+                            imperva: chunkAsAny.imperva,
+                            aifw: chunkAsAny.aifw,
+                            firewall: chunkAsAny.firewall
+                        });
+                    }
+
+                    yield chunk;
+                }
+                console.log(`\n✅ [DEBUG - AIFW Stream] Completed. Total chunks: ${chunkIndex}`);
+            } catch (error) {
+                console.error(`\n❌ [DEBUG - AIFW Stream] Error at chunk #${chunkIndex}:`, error);
+                throw error;
+            }
+        })();
+
+        return debugStream;
+    }
+    return openAiClient.chat.completions.create(configurations);
+}
+
 export const askAzureOpenAi = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
     const configurations = {
         model: process.env['AZUREOPENAI_MODEL'],
         messages: [{ role: userRole, content: prompt }]
+    };
+
+    if(isFirewalled) {
+        return azureOpenAIClientAifw.chat.completions.create(configurations);
+    }
+
+    return azureOpenAIClient.chat.completions.create(configurations);
+}
+
+export const askAzureOpenAiStream = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
+    const configurations = {
+        model: process.env['AZUREOPENAI_MODEL'],
+        messages: [{ role: userRole, content: prompt }] as any,
+        stream: true as const
     };
 
     if(isFirewalled) {

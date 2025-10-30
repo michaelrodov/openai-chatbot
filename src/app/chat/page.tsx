@@ -464,19 +464,75 @@ export default function ChatPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const responseText = await response.text();
-      
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: responseText || 'No response received',
-        sender: 'bot',
-        timestamp: new Date()
-      };
+      // Handle streaming response
+      if (isStreaming && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedText = '';
+        const botMessageId = (Date.now() + 1).toString();
 
-      setMessages(prev => [...prev, botMessage]);
+        // Create initial empty bot message
+        const initialBotMessage: Message = {
+          id: botMessageId,
+          text: '',
+          sender: 'bot',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, initialBotMessage]);
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') {
+                  break;
+                }
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.text) {
+                    accumulatedText += parsed.text;
+                    // Update the message incrementally
+                    setMessages(prev =>
+                      prev.map(msg =>
+                        msg.id === botMessageId
+                          ? { ...msg, text: accumulatedText }
+                          : msg
+                      )
+                    );
+                  }
+                } catch {
+                  // Skip malformed JSON
+                }
+              }
+            }
+          }
+        } catch (streamError) {
+          console.error('Error reading stream:', streamError);
+          throw streamError;
+        }
+      } else {
+        // Handle non-streaming response
+        const responseText = await response.text();
+
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: responseText || 'No response received',
+          sender: 'bot',
+          timestamp: new Date()
+        };
+
+        setMessages(prev => [...prev, botMessage]);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
-      
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: 'Sorry, there was an error processing your message. Please try again.',
@@ -503,7 +559,9 @@ export default function ChatPage() {
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
+    return `${time}.${milliseconds}`;
   };
 
   return (
