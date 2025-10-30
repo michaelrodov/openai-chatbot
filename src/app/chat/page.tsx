@@ -573,7 +573,7 @@ export default function ChatPage() {
             <span>AI</span>
           </Avatar>
           <div>
-            <HeaderTitle>Chat Assistant</HeaderTitle>
+            <HeaderTitle>ChatBot</HeaderTitle>
             <HeaderStatus>Online</HeaderStatus>
           </div>
           <HeaderRight>
