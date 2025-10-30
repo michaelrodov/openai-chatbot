@@ -424,6 +424,26 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Load checkbox states from localStorage on mount
+  useEffect(() => {
+    const savedStreaming = localStorage.getItem('chatbot-isStreaming');
+    const savedFirewalled = localStorage.getItem('chatbot-isFirewalled');
+
+    setIsStreaming((savedStreaming ?? false) === 'true');
+    setIsFirewalled((savedFirewalled ?? false) === 'true');
+
+  }, []);
+
+  // Save isStreaming to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('chatbot-isStreaming', String(isStreaming));
+  }, [isStreaming]);
+
+  // Save isFirewalled to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('chatbot-isFirewalled', String(isFirewalled));
+  }, [isFirewalled]);
+
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
 
