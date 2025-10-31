@@ -372,6 +372,7 @@ const MessageInput = styled.input`
   background-color: transparent;
   font-size: 14px;
   border: none;
+  color: #374151;
 `;
 
 const SendButton = styled.button<{ $disabled: boolean }>`
@@ -413,7 +414,7 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFirewalled, setIsFirewalled] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [llmProvider, setLlmProvider] = useState<'openai' | 'azure-openai'>('openai');
+  const [llmProvider, setLlmProvider] = useState<'openai' | 'azure-openai' | 'anthropic'>('openai');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -424,13 +425,18 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  // Load checkbox states from localStorage on mount
+  // Load checkbox states and provider from localStorage on mount
   useEffect(() => {
     const savedStreaming = localStorage.getItem('chatbot-isStreaming');
     const savedFirewalled = localStorage.getItem('chatbot-isFirewalled');
+    const savedProvider = localStorage.getItem('chatbot-llmProvider');
 
     setIsStreaming((savedStreaming ?? false) === 'true');
     setIsFirewalled((savedFirewalled ?? false) === 'true');
+
+    if (savedProvider && (savedProvider === 'openai' || savedProvider === 'azure-openai' || savedProvider === 'anthropic')) {
+      setLlmProvider(savedProvider as 'openai' | 'azure-openai' | 'anthropic');
+    }
 
   }, []);
 
@@ -443,6 +449,11 @@ export default function ChatPage() {
   useEffect(() => {
     localStorage.setItem('chatbot-isFirewalled', String(isFirewalled));
   }, [isFirewalled]);
+
+  // Save llmProvider to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('chatbot-llmProvider', llmProvider);
+  }, [llmProvider]);
 
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -473,8 +484,16 @@ export default function ChatPage() {
       if (isStreaming) {
         headers['X-Stream'] = 'true';
       }
-      // TODO do something more robust here
-      const response = await fetch(llmProvider === 'azure-openai' ? '/api/azure_openai' : '/api/question', {
+
+      // Route to the appropriate API based on the provider
+      let apiEndpoint = '/api/question';
+      if (llmProvider === 'azure-openai') {
+        apiEndpoint = '/api/azure_openai';
+      } else if (llmProvider === 'anthropic') {
+        apiEndpoint = '/api/anthropic';
+      }
+
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers,
         body: messageText,
@@ -601,10 +620,11 @@ export default function ChatPage() {
               <SelectLabel>Provider:</SelectLabel>
               <Select
                 value={llmProvider}
-                onChange={(e) => setLlmProvider(e.target.value as 'openai' | 'azure-openai')}
+                onChange={(e) => setLlmProvider(e.target.value as 'openai' | 'azure-openai' | 'anthropic')}
               >
                 <option value="openai">OpenAI</option>
                 <option value="azure-openai">Azure (OpenAI)</option>
+                <option value="anthropic">Anthropic (Claude)</option>
               </Select>
             </div>
             <ToggleLabel>

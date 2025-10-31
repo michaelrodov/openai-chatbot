@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { AzureOpenAI } from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
 export const MODEL_NAME = "gpt-4.1"; // Define the model name
 export const AIFW_EVENTS_SYSTEM_PROMPT = "You are a security expert and a sales person who specializes in Firewall security product\n" +
@@ -31,11 +32,25 @@ const azureOpenAIClientAifw = new AzureOpenAI({
 });
 
 export const openAiClient = new OpenAI();
+
 export const openAiClientAifw = new OpenAI({
     baseURL: process.env['AIFW_GATEWAY_URL'],
-    defaultHeaders: { 
+    defaultHeaders: {
         "X-Imperva-Api-Key": process.env['AIFW_API_KEY'] ,
         "X-Target-Url": 'https://api.openai.com/v1'
+    }
+});
+
+const anthropicClient = new Anthropic({
+    apiKey: process.env['CHATBOT_ANTHROPIC_API_KEY']
+});
+
+const anthropicClientAifw = new Anthropic({
+    apiKey: process.env['CHATBOT_ANTHROPIC_API_KEY'],
+    baseURL: process.env['AIFW_GATEWAY_URL'],
+    defaultHeaders: {
+        "X-Imperva-Api-Key": process.env['AIFW_API_KEY'],
+        "X-Target-Url": process.env['ANTHROPIC_LLM_PROVIDER_TARGET_URL'] || 'https://api.anthropic.com'
     }
 });
 
@@ -118,5 +133,60 @@ export const askAzureOpenAiStream = async (prompt: string, userRole: string = "u
     }
 
     return azureOpenAIClient.chat.completions.create(configurations);
+}
+
+export const askAnthropic = async (prompt: string, userRole: "user" | "assistant" = "user", isFirewalled: boolean) => {
+    const configurations = {
+        model: process.env['CHATBOT_ANTHROPIC_MODEL'] || 'claude-3-5-sonnet-20241022',
+        max_tokens: 4096,
+        messages: [{ role: userRole, content: prompt }]
+    };
+
+    if(isFirewalled) {
+        return anthropicClientAifw.messages.create(configurations);
+    }
+    return anthropicClient.messages.create(configurations);
+}
+
+export const askAnthropicStream = async (prompt: string, userRole: "user" | "assistant" = "user", isFirewalled: boolean) => {
+    const configurations = {
+        model: process.env['CHATBOT_ANTHROPIC_MODEL'] || 'claude-3-5-sonnet-20241022',
+        max_tokens: 4096,
+        messages: [{ role: userRole, content: prompt }],
+        stream: true as const
+    };
+
+    if(isFirewalled) {
+        console.log('🛡️  Using AIFW client with endpoint:', process.env['AIFW_GATEWAY_URL']);
+        const stream = await anthropicClientAifw.messages.create(configurations);
+
+        // Create a debugging wrapper around the stream
+        const debugStream = (async function* () {
+            let chunkIndex = 0;
+            try {
+                for await (const chunk of stream) {
+                    chunkIndex++;
+                    // Check for any AIFW-specific fields
+                    const chunkAsAny = chunk as any;
+                    if (chunkAsAny.imperva || chunkAsAny.aifw || chunkAsAny.firewall) {
+                        console.log('⚠️  AIFW-specific fields detected:', {
+                            imperva: chunkAsAny.imperva,
+                            aifw: chunkAsAny.aifw,
+                            firewall: chunkAsAny.firewall
+                        });
+                    }
+
+                    yield chunk;
+                }
+                console.log(`\n✅ [DEBUG - AIFW Stream] Completed. Total chunks: ${chunkIndex}`);
+            } catch (error) {
+                console.error(`\n❌ [DEBUG - AIFW Stream] Error at chunk #${chunkIndex}:`, error);
+                throw error;
+            }
+        })();
+
+        return debugStream;
+    }
+    return anthropicClient.messages.create(configurations);
 }
 

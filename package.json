@@ -3,14 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "openai": "PORT=3300 env-cmd -f .env.openai next dev --turbopack",
-    "azure:openai": "PORT=3301 env-cmd -f .env.azure.openai next dev --turbopack",
     "dev": "PORT=3300 next dev --turbopack",
     "build": "next build",
     "start": "PORT=3300 next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
     "lodash": "^4.17.21",
     "next": "15.3.2",
     "openai": "^4.103.0",
