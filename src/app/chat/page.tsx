@@ -408,13 +408,42 @@ const Spinner = styled.div`
   animation: ${spin} 1s linear infinite;
 `;
 
+type LLMProvider = 'openai' | 'azure-openai' | 'anthropic' | 'bedrock' | 'bedrock-converse' | 'gemini' | 'cohere' | 'grok';
+
+interface ModelInfo {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFirewalled, setIsFirewalled] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [llmProvider, setLlmProvider] = useState<'openai' | 'azure-openai' | 'anthropic'>('openai');
+  const [llmProvider, setLlmProvider] = useState<LLMProvider>('openai');
+  const [availableModels, setAvailableModels] = useState<Record<LLMProvider, ModelInfo[]>>({
+    'openai': [],
+    'azure-openai': [],
+    'anthropic': [],
+    'bedrock': [],
+    'bedrock-converse': [],
+    'gemini': [],
+    'cohere': [],
+    'grok': []
+  });
+  const [selectedModels, setSelectedModels] = useState<Record<LLMProvider, string>>({
+    'openai': '',
+    'azure-openai': '',
+    'anthropic': '',
+    'bedrock': '',
+    'bedrock-converse': '',
+    'gemini': '',
+    'cohere': '',
+    'grok': ''
+  });
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -434,8 +463,8 @@ export default function ChatPage() {
     setIsStreaming((savedStreaming ?? false) === 'true');
     setIsFirewalled((savedFirewalled ?? false) === 'true');
 
-    if (savedProvider && (savedProvider === 'openai' || savedProvider === 'azure-openai' || savedProvider === 'anthropic')) {
-      setLlmProvider(savedProvider as 'openai' | 'azure-openai' | 'anthropic');
+    if (savedProvider && (savedProvider === 'openai' || savedProvider === 'azure-openai' || savedProvider === 'anthropic' || savedProvider === 'bedrock' || savedProvider === 'bedrock-converse' || savedProvider === 'gemini' || savedProvider === 'cohere' || savedProvider === 'grok')) {
+      setLlmProvider(savedProvider as 'openai' | 'azure-openai' | 'anthropic' | 'bedrock' | 'bedrock-converse' | 'gemini' | 'cohere' | 'grok');
     }
 
   }, []);
@@ -454,6 +483,117 @@ export default function ChatPage() {
   useEffect(() => {
     localStorage.setItem('chatbot-llmProvider', llmProvider);
   }, [llmProvider]);
+
+  // Function to fetch models for a provider
+  const fetchModelsForProvider = async (provider: LLMProvider) => {
+    try {
+      console.log(`Fetching models for ${provider}...`);
+      const response = await fetch(`/api/models?provider=${provider}`);
+      if (!response.ok) {
+        console.error(`Failed to fetch models for ${provider}`);
+        return [];
+      }
+      const data = await response.json();
+
+      // Normalize model data structure
+      let models: ModelInfo[] = [];
+      if (Array.isArray(data.models)) {
+        models = data.models.map((model: any) => ({
+          id: model.id || model.modelId || model.name || '',
+          name: model.displayName || model.modelName || model.name || model.id || '',
+          description: model.description || ''
+        }));
+      } else if (data.models?.configured) {
+        // Azure OpenAI case
+        models = [{
+          id: data.models.configured.model || '',
+          name: data.models.configured.deployment || '',
+          description: 'Configured deployment'
+        }];
+      }
+
+      return models;
+    } catch (error) {
+      console.error(`Error fetching models for ${provider}:`, error);
+      return [];
+    }
+  };
+
+  // Load models on mount - fetch for current provider first, then others
+  useEffect(() => {
+    const loadModels = async () => {
+      setIsLoadingModels(true);
+
+      // Load saved selected models from localStorage
+      const savedModels: Record<string, string> = {};
+      const providers: LLMProvider[] = ['openai', 'azure-openai', 'anthropic', 'bedrock', 'bedrock-converse', 'gemini', 'cohere', 'grok'];
+
+      providers.forEach(provider => {
+        const saved = localStorage.getItem(`chatbot-model-${provider}`);
+        if (saved) {
+          savedModels[provider] = saved;
+        }
+      });
+
+      setSelectedModels(prev => ({ ...prev, ...savedModels }));
+
+      // Fetch models for current provider first
+      const currentProviderModels = await fetchModelsForProvider(llmProvider);
+      setAvailableModels(prev => ({ ...prev, [llmProvider]: currentProviderModels }));
+
+      // Auto-select first model if none selected
+      if (!savedModels[llmProvider] && currentProviderModels.length > 0) {
+        const firstModel = currentProviderModels[0].id;
+        setSelectedModels(prev => ({ ...prev, [llmProvider]: firstModel }));
+        localStorage.setItem(`chatbot-model-${llmProvider}`, firstModel);
+      }
+
+      setIsLoadingModels(false);
+
+      // Fetch models for other providers in background
+      const otherProviders = providers.filter(p => p !== llmProvider);
+      otherProviders.forEach(async (provider) => {
+        const models = await fetchModelsForProvider(provider);
+        setAvailableModels(prev => ({ ...prev, [provider]: models }));
+
+        // Auto-select first model if none selected
+        if (!savedModels[provider] && models.length > 0) {
+          const firstModel = models[0].id;
+          setSelectedModels(prev => ({ ...prev, [provider]: firstModel }));
+          localStorage.setItem(`chatbot-model-${provider}`, firstModel);
+        }
+      });
+    };
+
+    loadModels();
+  }, []);
+
+  // When provider changes, fetch models if not already loaded
+  useEffect(() => {
+    const loadProviderModels = async () => {
+      if (availableModels[llmProvider].length === 0) {
+        setIsLoadingModels(true);
+        const models = await fetchModelsForProvider(llmProvider);
+        setAvailableModels(prev => ({ ...prev, [llmProvider]: models }));
+
+        // Auto-select first model if none selected
+        if (!selectedModels[llmProvider] && models.length > 0) {
+          const firstModel = models[0].id;
+          setSelectedModels(prev => ({ ...prev, [llmProvider]: firstModel }));
+          localStorage.setItem(`chatbot-model-${llmProvider}`, firstModel);
+        }
+        setIsLoadingModels(false);
+      }
+    };
+
+    loadProviderModels();
+  }, [llmProvider]);
+
+  // Save selected model to localStorage when it changes
+  const handleModelChange = (model: string) => {
+    setSelectedModels(prev => ({ ...prev, [llmProvider]: model }));
+    localStorage.setItem(`chatbot-model-${llmProvider}`, model);
+  };
 
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -485,12 +625,25 @@ export default function ChatPage() {
         headers['X-Stream'] = 'true';
       }
 
+      // Add selected model to headers
+      if (selectedModels[llmProvider]) {
+        headers['X-Model'] = selectedModels[llmProvider];
+      }
+
       // Route to the appropriate API based on the provider
       let apiEndpoint = '/api/question';
       if (llmProvider === 'azure-openai') {
         apiEndpoint = '/api/azure_openai';
       } else if (llmProvider === 'anthropic') {
         apiEndpoint = '/api/anthropic';
+      } else if (llmProvider === 'bedrock' || llmProvider === 'bedrock-converse') {
+        apiEndpoint = '/api/bedrock';
+      } else if (llmProvider === 'gemini') {
+        apiEndpoint = '/api/gemini';
+      } else if (llmProvider === 'cohere') {
+        apiEndpoint = '/api/cohere';
+      } else if (llmProvider === 'grok') {
+        apiEndpoint = '/api/grok';
       }
 
       const response = await fetch(apiEndpoint, {
@@ -620,11 +773,36 @@ export default function ChatPage() {
               <SelectLabel>Provider:</SelectLabel>
               <Select
                 value={llmProvider}
-                onChange={(e) => setLlmProvider(e.target.value as 'openai' | 'azure-openai' | 'anthropic')}
+                onChange={(e) => setLlmProvider(e.target.value as LLMProvider)}
               >
                 <option value="openai">OpenAI</option>
-                <option value="azure-openai">Azure (OpenAI)</option>
-                <option value="anthropic">Anthropic (Claude)</option>
+                <option value="azure-openai">Azure OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="bedrock">AWS Bedrock (InvokeModel)</option>
+                <option value="bedrock-converse">AWS Bedrock (Converse)</option>
+                <option value="gemini">Google Gemini</option>
+                <option value="cohere">Cohere</option>
+                <option value="grok">Grok (xAI)</option>
+              </Select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <SelectLabel>Model:</SelectLabel>
+              <Select
+                value={selectedModels[llmProvider]}
+                onChange={(e) => handleModelChange(e.target.value)}
+                disabled={isLoadingModels || availableModels[llmProvider].length === 0}
+              >
+                {isLoadingModels ? (
+                  <option value="">Loading models...</option>
+                ) : availableModels[llmProvider].length === 0 ? (
+                  <option value="">No models available</option>
+                ) : (
+                  availableModels[llmProvider].map(model => (
+                    <option key={model.id} value={model.id} title={model.description}>
+                      {model.name}
+                    </option>
+                  ))
+                )}
               </Select>
             </div>
             <ToggleLabel>

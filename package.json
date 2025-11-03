@@ -10,6 +10,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
+    "@aws-sdk/client-bedrock": "^3.922.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.921.0",
+    "@google/generative-ai": "^0.24.1",
+    "cohere-ai": "^7.19.0",
     "lodash": "^4.17.21",
     "next": "15.3.2",
     "openai": "^4.103.0",
