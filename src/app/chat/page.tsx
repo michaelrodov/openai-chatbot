@@ -445,6 +445,7 @@ export default function ChatPage() {
   });
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -453,6 +454,21 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Focus input on mount and after loading completes
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Refocus input after loading completes
+  useEffect(() => {
+    if (!isLoading) {
+      // Use setTimeout to ensure focus happens after render
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
+    }
+  }, [isLoading]);
 
   // Load checkbox states and provider from localStorage on mount
   useEffect(() => {
@@ -883,6 +899,7 @@ export default function ChatPage() {
           <InputForm onSubmit={handleSubmit}>
             <InputWrapper>
               <MessageInput
+                ref={inputRef}
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
