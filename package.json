@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "PORT=3300 next dev --turbopack",
     "build": "next build",
-    "start": "PORT=3300 next start",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -17,6 +17,7 @@
     "lodash": "^4.17.21",
     "next": "15.3.2",
     "openai": "^4.103.0",
+    "picomatch": "^4.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",

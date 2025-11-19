@@ -15,78 +15,155 @@ export const AIFW_EVENTS_SYSTEM_PROMPT = "You are a security expert and a sales 
     "- the prompt or response that cause the violation is located in 'messages' object.\n" +
     "When such JSON present, please provide one sentence that would describe why request triggered the guardian that was triggered and also what action was done."
 
-const azureOpenAIClient = new AzureOpenAI({
-    apiKey: process.env['AZUREOPENAI_API_KEY'],
-    endpoint: process.env['AZUREOPENAI_ENDPOINT'],
-    apiVersion: process.env['AZUREOPENAI_VERSION'],
-    deployment: process.env['AZUREOPENAI_DEPLOYMENT']
-});
+// Lazy initialization for Azure OpenAI clients to avoid build-time errors
+let azureOpenAIClient: AzureOpenAI | null = null;
+let azureOpenAIClientAifw: AzureOpenAI | null = null;
 
-const azureOpenAIClientAifw = new AzureOpenAI({
-    apiKey: process.env['AZUREOPENAI_API_KEY'],
-    endpoint: process.env['AIFW_GATEWAY_URL'],
-    apiVersion: process.env['AZUREOPENAI_VERSION'],
-    deployment: process.env['AZUREOPENAI_DEPLOYMENT'],
-    defaultHeaders: { 
-        "X-Imperva-Api-Key": process.env['AIFW_API_KEY'],
-        "X-Target-Url": process.env['AZUREOPENAI_ENDPOINT'],
-        "X-User-Id": 'rodov1'
+const getAzureOpenAIClient = () => {
+    if (!azureOpenAIClient) {
+        azureOpenAIClient = new AzureOpenAI({
+            apiKey: process.env['AZUREOPENAI_API_KEY'],
+            endpoint: process.env['AZUREOPENAI_ENDPOINT'],
+            apiVersion: process.env['AZUREOPENAI_VERSION'],
+            deployment: process.env['AZUREOPENAI_DEPLOYMENT']
+        });
     }
-});
+    return azureOpenAIClient;
+};
 
-export const openAiClient = new OpenAI();
-
-export const openAiClientAifw = new OpenAI({
-    baseURL: process.env['AIFW_GATEWAY_URL'],
-    defaultHeaders: {
-        "X-Imperva-Api-Key": process.env['AIFW_API_KEY'] ,
-        "X-Target-Url": 'https://api.openai.com/v1'
+const getAzureOpenAIClientAifw = () => {
+    if (!azureOpenAIClientAifw) {
+        azureOpenAIClientAifw = new AzureOpenAI({
+            apiKey: process.env['AZUREOPENAI_API_KEY'],
+            endpoint: process.env['AIFW_GATEWAY_URL'],
+            apiVersion: process.env['AZUREOPENAI_VERSION'],
+            deployment: process.env['AZUREOPENAI_DEPLOYMENT'],
+            defaultHeaders: {
+                "X-Imperva-Api-Key": process.env['AIFW_API_KEY'],
+                "X-Target-Url": process.env['AZUREOPENAI_ENDPOINT'],
+                "X-User-Id": 'rodov1'
+            }
+        });
     }
-});
+    return azureOpenAIClientAifw;
+};
 
-const anthropicClient = new Anthropic({
-    apiKey: process.env['CHATBOT_ANTHROPIC_API_KEY']
-});
+// Lazy initialization for OpenAI clients
+let openAiClient: OpenAI | null = null;
+let openAiClientAifw: OpenAI | null = null;
 
-const anthropicClientAifw = new Anthropic({
-    apiKey: process.env['CHATBOT_ANTHROPIC_API_KEY'],
-    baseURL: process.env['AIFW_GATEWAY_URL'],
-    defaultHeaders: {
-        "X-Imperva-Api-Key": process.env['AIFW_API_KEY'],
-        "X-Target-Url": process.env['ANTHROPIC_LLM_PROVIDER_TARGET_URL'] || 'https://api.anthropic.com'
+const getOpenAiClient = () => {
+    if (!openAiClient) {
+        openAiClient = new OpenAI();
     }
-});
+    return openAiClient;
+};
 
-const bedrockClient = new BedrockRuntimeClient({
-    region: process.env['BEDROCK_AWS_REGION'] || 'us-east-1',
-    credentials: {
-        accessKeyId: process.env['BEDROCK_AWS_ACCESS_ID_KEY'] || '',
-        secretAccessKey: process.env['BEDROCK_AWS_SECRET_ID_KEY'] || ''
+const getOpenAiClientAifw = () => {
+    if (!openAiClientAifw) {
+        openAiClientAifw = new OpenAI({
+            baseURL: process.env['AIFW_GATEWAY_URL'],
+            defaultHeaders: {
+                "X-Imperva-Api-Key": process.env['AIFW_API_KEY'],
+                "X-Target-Url": 'https://api.openai.com/v1'
+            }
+        });
     }
-});
+    return openAiClientAifw;
+};
 
-// Google Gemini client
-const geminiClient = new GoogleGenerativeAI(process.env['GEMINI_API_KEY'] || '');
+// Lazy initialization for Anthropic clients
+let anthropicClient: Anthropic | null = null;
+let anthropicClientAifw: Anthropic | null = null;
 
-// Cohere client
-const cohereClient = new CohereClient({
-    token: process.env['COHERE_API_KEY'] || ''
-});
-
-// Grok/xAI client (OpenAI-compatible)
-const grokClient = new OpenAI({
-    apiKey: process.env['GROK_API_KEY'],
-    baseURL: 'https://api.x.ai/v1'
-});
-
-const grokClientAifw = new OpenAI({
-    apiKey: process.env['GROK_API_KEY'],
-    baseURL: process.env['AIFW_GATEWAY_URL'],
-    defaultHeaders: {
-        "X-Imperva-Api-Key": process.env['AIFW_API_KEY'],
-        "X-Target-Url": 'https://api.x.ai/v1'
+const getAnthropicClient = () => {
+    if (!anthropicClient) {
+        anthropicClient = new Anthropic({
+            apiKey: process.env['CHATBOT_ANTHROPIC_API_KEY']
+        });
     }
-});
+    return anthropicClient;
+};
+
+const getAnthropicClientAifw = () => {
+    if (!anthropicClientAifw) {
+        anthropicClientAifw = new Anthropic({
+            apiKey: process.env['CHATBOT_ANTHROPIC_API_KEY'],
+            baseURL: process.env['AIFW_GATEWAY_URL'],
+            defaultHeaders: {
+                "X-Imperva-Api-Key": process.env['AIFW_API_KEY'],
+                "X-Target-Url": process.env['ANTHROPIC_LLM_PROVIDER_TARGET_URL'] || 'https://api.anthropic.com'
+            }
+        });
+    }
+    return anthropicClientAifw;
+};
+
+// Lazy initialization for Bedrock client
+let bedrockClient: BedrockRuntimeClient | null = null;
+
+const getBedrockClient = () => {
+    if (!bedrockClient) {
+        bedrockClient = new BedrockRuntimeClient({
+            region: process.env['BEDROCK_AWS_REGION'] || 'us-east-1',
+            credentials: {
+                accessKeyId: process.env['BEDROCK_AWS_ACCESS_ID_KEY'] || '',
+                secretAccessKey: process.env['BEDROCK_AWS_SECRET_ID_KEY'] || ''
+            }
+        });
+    }
+    return bedrockClient;
+};
+
+// Lazy initialization for Google Gemini client
+let geminiClient: GoogleGenerativeAI | null = null;
+
+const getGeminiClient = () => {
+    if (!geminiClient) {
+        geminiClient = new GoogleGenerativeAI(process.env['GEMINI_API_KEY'] || '');
+    }
+    return geminiClient;
+};
+
+// Lazy initialization for Cohere client
+let cohereClient: CohereClient | null = null;
+
+const getCohereClient = () => {
+    if (!cohereClient) {
+        cohereClient = new CohereClient({
+            token: process.env['COHERE_API_KEY'] || ''
+        });
+    }
+    return cohereClient;
+};
+
+// Lazy initialization for Grok/xAI client (OpenAI-compatible)
+let grokClient: OpenAI | null = null;
+let grokClientAifw: OpenAI | null = null;
+
+const getGrokClient = () => {
+    if (!grokClient) {
+        grokClient = new OpenAI({
+            apiKey: process.env['GROK_API_KEY'],
+            baseURL: 'https://api.x.ai/v1'
+        });
+    }
+    return grokClient;
+};
+
+const getGrokClientAifw = () => {
+    if (!grokClientAifw) {
+        grokClientAifw = new OpenAI({
+            apiKey: process.env['GROK_API_KEY'],
+            baseURL: process.env['AIFW_GATEWAY_URL'],
+            defaultHeaders: {
+                "X-Imperva-Api-Key": process.env['AIFW_API_KEY'],
+                "X-Target-Url": 'https://api.x.ai/v1'
+            }
+        });
+    }
+    return grokClientAifw;
+};
 
 
 export const askOpenAi = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
@@ -96,9 +173,9 @@ export const askOpenAi = async (prompt: string, userRole: string = "user", isFir
     };
 
     if(isFirewalled) {
-        return openAiClientAifw.chat.completions.create(configurations);
+        return getOpenAiClientAifw().chat.completions.create(configurations);
     }
-    return openAiClient.chat.completions.create(configurations);
+    return getOpenAiClient().chat.completions.create(configurations);
 }
 
 export const askOpenAiStream = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
@@ -110,7 +187,7 @@ export const askOpenAiStream = async (prompt: string, userRole: string = "user",
 
     if(isFirewalled) {
         console.log('🛡️  Using AIFW client with endpoint:', process.env['AIFW_GATEWAY_URL']);
-        const stream = await openAiClientAifw.chat.completions.create(configurations);
+        const stream = await getOpenAiClientAifw().chat.completions.create(configurations);
 
         // Create a debugging wrapper around the stream
         const debugStream = (async function* () {
@@ -139,7 +216,7 @@ export const askOpenAiStream = async (prompt: string, userRole: string = "user",
 
         return debugStream;
     }
-    return openAiClient.chat.completions.create(configurations);
+    return getOpenAiClient().chat.completions.create(configurations);
 }
 
 export const askAzureOpenAi = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
@@ -149,10 +226,10 @@ export const askAzureOpenAi = async (prompt: string, userRole: string = "user", 
     };
 
     if(isFirewalled) {
-        return azureOpenAIClientAifw.chat.completions.create(configurations);
+        return getAzureOpenAIClientAifw().chat.completions.create(configurations);
     }
 
-    return azureOpenAIClient.chat.completions.create(configurations);
+    return getAzureOpenAIClient().chat.completions.create(configurations);
 }
 
 export const askAzureOpenAiStream = async (prompt: string, userRole: string = "user", isFirewalled: boolean) => {
@@ -163,10 +240,10 @@ export const askAzureOpenAiStream = async (prompt: string, userRole: string = "u
     };
 
     if(isFirewalled) {
-        return azureOpenAIClientAifw.chat.completions.create(configurations);
+        return getAzureOpenAIClientAifw().chat.completions.create(configurations);
     }
 
-    return azureOpenAIClient.chat.completions.create(configurations);
+    return getAzureOpenAIClient().chat.completions.create(configurations);
 }
 
 export const askAnthropic = async (prompt: string, userRole: "user" | "assistant" = "user", isFirewalled: boolean) => {
@@ -177,9 +254,9 @@ export const askAnthropic = async (prompt: string, userRole: "user" | "assistant
     };
 
     if(isFirewalled) {
-        return anthropicClientAifw.messages.create(configurations);
+        return getAnthropicClientAifw().messages.create(configurations);
     }
-    return anthropicClient.messages.create(configurations);
+    return getAnthropicClient().messages.create(configurations);
 }
 
 export const askAnthropicStream = async (prompt: string, userRole: "user" | "assistant" = "user", isFirewalled: boolean) => {
@@ -192,7 +269,7 @@ export const askAnthropicStream = async (prompt: string, userRole: "user" | "ass
 
     if(isFirewalled) {
         console.log('🛡️  Using AIFW client with endpoint:', process.env['AIFW_GATEWAY_URL']);
-        const stream = await anthropicClientAifw.messages.create(configurations);
+        const stream = await getAnthropicClientAifw().messages.create(configurations);
 
         // Create a debugging wrapper around the stream
         const debugStream = (async function* () {
@@ -221,7 +298,7 @@ export const askAnthropicStream = async (prompt: string, userRole: "user" | "ass
 
         return debugStream;
     }
-    return anthropicClient.messages.create(configurations);
+    return getAnthropicClient().messages.create(configurations);
 }
 
 export const askBedrock = async (prompt: string, userRole: "user" | "assistant" = "user", isFirewalled: boolean) => {
@@ -246,7 +323,7 @@ export const askBedrock = async (prompt: string, userRole: "user" | "assistant" 
         console.log('🛡️  Bedrock with AIFW is not yet implemented');
     }
 
-    const response = await bedrockClient.send(command);
+    const response = await getBedrockClient().send(command);
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
     return responseBody;
@@ -272,7 +349,7 @@ export const askBedrockStream = async (prompt: string, userRole: "user" | "assis
         console.log('🛡️  Bedrock streaming with AIFW is not yet implemented');
     }
 
-    const response = await bedrockClient.send(command);
+    const response = await getBedrockClient().send(command);
 
     // Create an async generator to yield chunks
     return (async function* () {
@@ -308,7 +385,7 @@ export const askBedrockConverse = async (prompt: string, userRole: "user" | "ass
         console.log('🛡️  Bedrock Converse with AIFW is not yet implemented');
     }
 
-    const response = await bedrockClient.send(command);
+    const response = await getBedrockClient().send(command);
     return response;
 }
 
@@ -332,7 +409,7 @@ export const askBedrockConverseStream = async (prompt: string, userRole: "user" 
         console.log('🛡️  Bedrock Converse streaming with AIFW is not yet implemented');
     }
 
-    const response = await bedrockClient.send(command);
+    const response = await getBedrockClient().send(command);
 
     // Create an async generator to yield chunks
     return (async function* () {
@@ -347,7 +424,7 @@ export const askBedrockConverseStream = async (prompt: string, userRole: "user" 
 // Google Gemini functions
 export const askGemini = async (prompt: string, userRole: "user" | "assistant" = "user", isFirewalled: boolean, modelName?: string) => {
     const selectedModel = modelName || process.env['GEMINI_MODEL'] || 'gemini-pro';
-    const model = geminiClient.getGenerativeModel({ model: selectedModel });
+    const model = getGeminiClient().getGenerativeModel({ model: selectedModel });
 
     if (isFirewalled) {
         console.log('🛡️  Gemini with AIFW is not yet implemented');
@@ -364,7 +441,7 @@ export const askGemini = async (prompt: string, userRole: "user" | "assistant" =
 
 export const askGeminiStream = async (prompt: string, userRole: "user" | "assistant" = "user", isFirewalled: boolean, modelName?: string) => {
     const selectedModel = modelName || process.env['GEMINI_MODEL'] || 'gemini-pro';
-    const model = geminiClient.getGenerativeModel({ model: selectedModel });
+    const model = getGeminiClient().getGenerativeModel({ model: selectedModel });
 
     if (isFirewalled) {
         console.log('🛡️  Gemini streaming with AIFW is not yet implemented');
@@ -405,7 +482,7 @@ export const askCohere = async (prompt: string, userRole: "user" | "assistant" =
         console.log('🛡️  Cohere with AIFW is not yet implemented');
     }
 
-    const response = await cohereClient.generate({
+    const response = await getCohereClient().generate({
         model: model,
         prompt: prompt,
         maxTokens: 4096
@@ -424,7 +501,7 @@ export const askCohereStream = async (prompt: string, userRole: "user" | "assist
         console.log('🛡️  Cohere streaming with AIFW is not yet implemented');
     }
 
-    const stream = await cohereClient.generateStream({
+    const stream = await getCohereClient().generateStream({
         model: model,
         prompt: prompt,
         maxTokens: 4096
@@ -464,9 +541,9 @@ export const askGrok = async (prompt: string, userRole: string = "user", isFirew
     };
 
     if (isFirewalled) {
-        return grokClientAifw.chat.completions.create(configurations);
+        return getGrokClientAifw().chat.completions.create(configurations);
     }
-    return grokClient.chat.completions.create(configurations);
+    return getGrokClient().chat.completions.create(configurations);
 }
 
 export const askGrokStream = async (prompt: string, userRole: string = "user", isFirewalled: boolean, modelName?: string) => {
@@ -478,7 +555,7 @@ export const askGrokStream = async (prompt: string, userRole: string = "user", i
 
     if (isFirewalled) {
         console.log('🛡️  Using AIFW client with endpoint:', process.env['AIFW_GATEWAY_URL']);
-        const stream = await grokClientAifw.chat.completions.create(configurations);
+        const stream = await getGrokClientAifw().chat.completions.create(configurations);
 
         const debugStream = (async function* () {
             let chunkIndex = 0;
@@ -504,6 +581,6 @@ export const askGrokStream = async (prompt: string, userRole: string = "user", i
 
         return debugStream;
     }
-    return grokClient.chat.completions.create(configurations);
+    return getGrokClient().chat.completions.create(configurations);
 }
 

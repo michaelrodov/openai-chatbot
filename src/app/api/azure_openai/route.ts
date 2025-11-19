@@ -34,7 +34,9 @@ export const POST = async (req: Request) => {
         console.error("Error processing Azure OpenAI request:", error);
         
         // handle blocking errors from AI Firewall
+        // @ts-expect-error - error.message exists on Error type
         if(error?.status === 400) {
+            // @ts-expect-error - error.message exists on Error type
             return new Response(error.message, { status: 200 });
         }
 

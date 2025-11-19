@@ -1,4 +1,3 @@
-import { openAiClient } from "./llmUtils";
 import { BedrockClient, ListFoundationModelsCommand } from "@aws-sdk/client-bedrock";
 import OpenAI from "openai";
 
@@ -20,6 +19,7 @@ interface BedrockModelSummary {
 // OpenAI - List available models
 export const listOpenAIModels = async () => {
     try {
+        const openAiClient = new OpenAI();
         const models = await openAiClient.models.list();
         return models.data.map(model => ({
             id: model.id,

@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import {isEmpty} from "lodash";
-import {AIFW_EVENTS_SYSTEM_PROMPT, aiFwClient, askAiFw, askOpenAi, loadSystemPrompt, MODEL_NAME} from "../../utils/llmUtils";
+import {AIFW_EVENTS_SYSTEM_PROMPT, aiFwClient, askAiFw, askOpenAi, MODEL_NAME} from "../../utils/llmUtils";
 
 // in case the baseUrl is not provided the regular openAi url will be used (in the .env files)
 // const openAiClient = new OpenAI({
